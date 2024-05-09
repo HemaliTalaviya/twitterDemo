@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Card on Button Click</title>
+    <style>
+        .card {
+            width: 300px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="text"] {
+            width: calc(100% - 10px);
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            width: 50%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .container {
+            width: 500px;
+            padding: 20px;
+            margin-bottom: 50px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #allPosts {
+            text-align: center;
+        }
+
+        #commentContainer {
+            text-align: center;
+            width: 100%;
+            background-color: aquamarine;
+            margin: auto;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #headingName {
+            text-align: center;
+            width: 100%;
+            background-color: aquamarine;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100%;
+            margin: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="headingName">
+
+    </h1>
+    <div class="card">
+        <input type="text" id="inputText" placeholder="Enter text here">
+        <button id="submitButton" onclick="data()">Post</button>
+    </div>
+
+    <div class="container" id="container">
+        <div id="allPosts">
+
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+
+
+        const cookieString = document.cookie;
+        const cookies = cookieString.split(';');
+        // console.log("fffffffff :: ",cookies , cookies.length );
+        if (cookies[0] === '') {
+            window.location.href = './login.html';
+        }
+
+        const socket = io();
+
+
+        socket.emit('POST_LIST', { eventName: "POST_LIST", data: {} })
+        socket.on('POST_LIST', (data) => {
+            // console.log('post list EVENT ==',data);
+            document.getElementById('container').style.display = "block"
+            for (let index = 0; index < data.data.postData.length; index++) {
+                createCard(data.data.postData[index], data.data.userData[index])
+            }
+        })
+
+        let userId = ""
+        let postId = ""
+        var container = document.getElementById('container');
+        container.style.display = 'none'
+
+        function data() {
+            const cookieString = document.cookie;
+            const cookies = cookieString.split(';');
+            if (cookies[0] === '') {
+                window.location.href = './login.html';
+                return;
+            }
+            var inputValue = document.getElementById('inputText').value.trim();
+            let userName = JSON.parse(getCookie('USER'));
+            if (!userName) {
+                window.location.href = './login.html'
+            }
+
+            if (inputValue !== '') {
+                if (userName !== null) {
+                    socket.emit('ADD_POST', { eventName: "ADD_POST", data: { inputValue, userId, userName } })
+                }
+                container.style.display = 'block'
+                document.getElementById('inputText').value = ''; // Clear input field
+            }
+        }
+
+
+        socket.on('ADD_POST', (data) => {
+            // console.log('add post Data ===', data);
+            createCard(data.data.postData, data.data.userData);
+        })
+
+        function getCookie(name) {
+            const cookieString = document.cookie;
+            const cookies = cookieString.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                    return cookie.substring(name.length + 1);
+                }
+            }
+            return null;
+        }
+
+        // Example usage:
+        let userName = JSON.parse(getCookie('USER'));
+        console.log('User Name:', userName);
+        document.getElementById('headingName').textContent = `${userName.name}`
+        if (userName !== null) {
+            userId = userName._id;
+        } else {
+            console.log('cookies expired===');
+        }
+       
+
+
+        function createCard(postData, userData) {
+            let card = document.createElement('div');
+            card.className = 'card';
+            card.id = `card-${postData._id}`;
+            let postId = postData._id;
+
+            let heading = document.createElement('h2')
+            heading.textContent = userData.name;
+            card.appendChild(heading);
+
+            let paragraph = document.createElement('p');
+            paragraph.textContent = postData.postName;
+            card.appendChild(paragraph);
+
+            let button1 = document.createElement('button');
+            button1.textContent = `Like ${postData.like.countLike}`;
+            button1.id = `like-${postData._id}`
+
+            button1.onclick = function () {
+                like(userId, postId)
+            }
+            card.appendChild(button1);
+
+            let button2 = document.createElement('button');
+            button2.textContent = 'Comment';
+            button2.id = `comment-${postData._id}`
+            card.appendChild(button2);
+
+            document.getElementById('allPosts').appendChild(card);
+            commentButtonOnClick(postId);
+        }
+
+        function like(userId, postId) {
+            // alert(postId)
+            let userName = JSON.parse(getCookie('USER'));
+            if (!userName) {
+                window.location.href = './login.html'
+            }
+            if (userName !== null) {
+                socket.emit('LIKE_POST', { eventName: "LIKE_POST", data: { userId, postId } })
+            }
+        }
+
+        socket.on('LIKE_POST', (data) => {
+
+            let countLike = data.data.addLike.like.countLike;
+            document.getElementById(`like-${data.data.addLike._id}`).textContent = `Like ${countLike}`
+        })
+
+
+        function commentButtonOnClick(postId) {
+
+            let card = document.getElementById(`card-${postId}`);
+            let commentBox = card.querySelector('#commentBox');
+
+            if (!commentBox) {
+                commentBox = document.createElement('div');
+                commentBox.id = 'commentBox';
+
+                const commentInput = document.createElement('input');
+                commentInput.placeholder = 'Enter your comment';
+                commentInput.style.display = 'block';
+
+                const addCommentButton = document.createElement('button');
+                addCommentButton.textContent = 'Add Comment';
+
+                const commentContainer = document.createElement('div');
+                commentContainer.id = `commentContainer-${postId}`
+
+                addCommentButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    let userName = JSON.parse(getCookie('USER'));
+                    if (!userName) {
+                        window.location.href = './login.html'
+                    }
+                    const commentText = commentInput.value.trim();
+
+                    if (commentText) {
+                        if (userName != null) {
+                            socket.emit('ADD_COMMENT', { eventName: "ADD_COMMENT", data: { userId, postId, commentText } })
+                        }
+                        commentInput.value = '';
+                    } else {
+                        alert('Please enter a comment');
+                    }
+                });
+
+                commentBox.appendChild(commentInput);
+                commentBox.appendChild(addCommentButton);
+                commentBox.appendChild(commentContainer);
+
+                card.appendChild(commentBox);
+
+            } else {
+                alert('run else part')
+                commentBox.style.display = commentBox.style.display === 'none' ? 'block' : 'none';
+            }
+            let userName = JSON.parse(getCookie('USER'));
+            if (!userName) {
+                window.location.href = './login.html'
+            }
+            socket.emit('COMMENT_LIST', { eventName: 'COMMENT_LIST', data: { userName, postId } })
+        }
+
+
+        socket.on('ADD_COMMENT', (data) => {
+            console.log('ADD_COMMENT Data ===', data);
+            comment(data.data.commentData[0].Comment, data.data.commentData[0]._id)
+        })
+
+
+        socket.on('COMMENT_LIST', (data) => {
+            console.log('COMMENT_LIST Data 👍 ==', data);
+            for (let index = 0; index < data.data.commentData.length; index++) {
+                comment(data.data.commentData[index].Comment, data.data.commentData[index]._id)
+            }
+        })
+
+
+        function comment(commentData, postID) {
+            // console.log(`comment Data === ${JSON.stringify(commentData)} userData ===${JSON.stringify(userData)}`)
+            let commentContainer = document.getElementById('commentContainer-' + postID);
+            commentData.forEach(comment => {
+                let existingCommentDiv = document.getElementById(`latestComment-${comment._id}`);
+                if (existingCommentDiv) {
+                    existingCommentDiv.textContent = `${comment.commentUserId.name}: ${comment.message}`;
+                } else {
+                    const commentDiv = document.createElement('div');
+                    commentDiv.id = `latestComment-${comment._id}`;
+                    commentDiv.textContent = `${comment.commentUserId.name}: ${comment.message}`;
+                    commentContainer.appendChild(commentDiv);
+                }
+            });
+        }
+
+    </script>
+</body>
+
+</html>
