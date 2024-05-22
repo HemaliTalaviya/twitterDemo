@@ -1,16 +1,17 @@
 const eventHandler = require("../eventHandler");
-
-const socketConnection = () =>{
+const createAdapter = require("@socket.io/redis-adapter");
+const {  pubClient, subClient } = require('./redisConnection');
+const socketConnection = () => {
+   
     try {
+        io.adapter(createAdapter(pubClient,subClient))
         io.on('connection', async(socket) =>{
             console.log('conncted...',socket.id)
-            // console.log('testing.......')
             await eventHandler(socket);
 
             socket.on('disconnect',()=>{
                 console.log('Disconnecting....');
             })
-
         })
 
     } catch (error) {

@@ -8,12 +8,14 @@ const server = http.createServer(app);
 global.io = require('socket.io')(server)
 const mongoCon = require('../src/connection/mongoDB');
 const socketConnection = require('./connection/socketConnection')
+const {redisConnection} = require('./connection/redisConnection')
 
 
 app.use(express.json())
 app.use(express.static('public'))
 
 socketConnection();
+redisConnection();
 mongoCon();
 
 app.get('/',(req,res)=>{
@@ -37,5 +39,5 @@ app.post('/login',(req,res)=>{
 
 
 
-const port = process.env.PORT || '5000'
+const port = process.env.PORT || process.argv[2]
 server.listen(port,()=>console.log('Listening port on...!!!',port))
